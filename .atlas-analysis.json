@@ -1,0 +1,102 @@
+{
+  "projectType": "general",
+  "projectName": "YT Reader Mode",
+  "projectDescription": "A browser extension that replaces the YouTube video player with the native AI Chat panel, enabling a focused, distraction-free reading experience.",
+  "theme": "almond",
+  "primaryColor": "#FF0000",
+  "lightColor": "#FF4444",
+  "darkColor": "#CC0000",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/reader-mode",
+              "features/auto-activate",
+              "features/initial-prompts",
+              "features/smart-timestamps"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/popup-settings",
+              "configuration/storage"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Guide",
+        "groups": [
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/event-bus",
+              "architecture/youtube-facade",
+              "architecture/state-manager"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/workflow",
+              "contributing/commit-conventions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Immersive Reader Mode: overlays the YouTube AI Chat panel exactly over the video player",
+    "Auto-activate: enters Reader Mode automatically on videos with AI capabilities",
+    "Initial Prompts: configurable automatic text submitted to the AI when a video opens",
+    "Smart Timestamps: clicking AI-suggested timestamps seamlessly switches back to video mode",
+    "Zero-dependency Vanilla JS: no bundlers, no frameworks, pure content script architecture",
+    "Event-driven architecture using a strict Pub/Sub EventBus pattern",
+    "DOM abstraction via YouTubeFacade to isolate selector fragility",
+    "Chrome sync storage for persistent cross-device settings"
+  ],
+  "publicApiSurface": [
+    "EventBus.on(event, callback)",
+    "EventBus.off(event, callback)",
+    "EventBus.emit(event, payload)",
+    "StateManager.isActive",
+    "StateManager.settings",
+    "StateManager.setSettings(newSettings)",
+    "StateManager.setActive(isActive)",
+    "ReaderModeController.activate()",
+    "ReaderModeController.activateManual()",
+    "ReaderModeController.deactivate()",
+    "ReaderModeController.toggle()",
+    "PanelManager.expand()",
+    "PanelManager.syncPosition()",
+    "PanelManager.sendMessage(text)",
+    "PanelManager.triggerAskButton()",
+    "YouTubeFacade.getPlayer()",
+    "YouTubeFacade.getEngagementPanel()",
+    "YouTubeFacade.getAskButton()",
+    "YouTubeFacade.getChatTextarea()",
+    "YouTubeFacade.getChatSendButton()",
+    "YouTubeFacade.isTimestamp(element)",
+    "SettingsManager.load()",
+    "SettingsManager.save(partial)",
+    "NavigationWatcher.start()",
+    "NavigationWatcher.stop()",
+    "ToggleButton.inject()",
+    "ToggleButton.update({ isActive })",
+    "ToggleButton.remove()"
+  ]
+}

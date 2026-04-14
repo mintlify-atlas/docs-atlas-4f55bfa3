@@ -1,0 +1,82 @@
+---
+title: "EventBus: Pub/Sub communication in the extension"
+description: "The EventBus module provides decoupled Pub/Sub messaging between all components of YT Reader Mode, making every module independently replaceable."
+---
+
+`EventBus` is the communication backbone of YT Reader Mode. Every module — from `ToggleButton` to `ReaderModeController` — communicates exclusively through it. No module holds a reference to another module or calls its methods directly. This makes components completely decoupled from one another: you can replace, test, or extend any single module without touching the rest of the codebase.
+
+```javascript eventBus.js
+const EventBus = {
+  _listeners: {},
+
+  on(event, callback) {
+    if (!this._listeners[event]) {
+      this._listeners[event] = [];
+    }
+    this._listeners[event].push(callback);
+  },
+
+  off(event, callback) {
+    if (!this._listeners[event]) return;
+    this._listeners[event] = this._listeners[event].filter(cb => cb !== callback);
+  },
+
+  emit(event, payload) {
+    if (!this._listeners[event]) return;
+    this._listeners[event].forEach(callback => callback(payload));
+  }
+};
+```
+
+## API reference
+
+### `EventBus.on(event, callback)`
+
+Subscribe to a named event. When `emit` broadcasts `event`, `callback` is called with the payload. Multiple listeners can subscribe to the same event — all are called in subscription order.
+
+```javascript
+EventBus.on('APP_INIT', () => {
+  NavigationWatcher.start();
+});
+```
+
+### `EventBus.off(event, callback)`
+
+Unsubscribe a specific callback from an event. The `callback` reference must be the same function object that was passed to `on`. Use this to clean up listeners when a component is torn down.
+
+```javascript
+const handler = () => ToggleButton.inject();
+EventBus.on('APP_INIT', handler);
+
+// Later, to remove:
+EventBus.off('APP_INIT', handler);
+```
+
+### `EventBus.emit(event, payload)`
+
+Broadcast an event to all current subscribers. `payload` is optional — pass `undefined` or omit it for events that carry no data. Subscribers are called synchronously in the order they subscribed.
+
+```javascript
+EventBus.emit('STATE_CHANGED', { isActive: true });
+```
+
+## Events reference
+
+| Event | Description | Emitted by | Handled by | Payload |
+|---|---|---|---|---|
+| `APP_INIT` | Application initialization. Fires on first load and after every YouTube SPA navigation. | `content.js`, `ReaderModeController` | `NavigationWatcher`, `SettingsManager`, `ReaderModeController`, `ToggleButton` | none |
+| `NAVIGATE_FINISH` | YouTube SPA navigation completed. Triggers deactivation and a re-init cycle. | `NavigationWatcher` | `ReaderModeController` | none |
+| `STATE_CHANGED` | Reader Mode active state changed. Drives the toggle button label and icon. | `StateManager` | `ToggleButton` | `{ isActive: boolean }` |
+| `SETTINGS_CHANGED` | User settings were updated from storage or the popup. | `StateManager` | Any subscriber | full settings object |
+| `TOGGLE_REQUESTED` | User clicked the Reader / Video toggle button. | `ToggleButton` | `ReaderModeController` | none |
+| `PANEL_CLOSED_BY_USER` | AI Chat panel was collapsed or a timestamp link was clicked. | `PanelManager` | `ReaderModeController` | none |
+
+## Why Pub/Sub?
+
+YT Reader Mode does not use ES modules. All files are loaded as plain `<script>` tags injected by the browser's content script engine — they share a single isolated global scope but cannot `import` or `require` each other. Direct cross-module calls would create tight coupling and make load order errors impossible to debug.
+
+`EventBus` is loaded first and is always available as a global. Every subsequent file can call `EventBus.on(...)` immediately at the top level of its own execution, safely registering listeners before `APP_INIT` is ever emitted. When `content.js` — the last file in the load order — fires `EventBus.emit('APP_INIT')`, every module is already subscribed and ready.
+
+<Tip>
+  When adding a new feature, always communicate with other modules through `EventBus.emit` and `EventBus.on` rather than calling their methods directly. This keeps the architecture decoupled and ensures your feature survives future module refactors.
+</Tip>

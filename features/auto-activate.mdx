@@ -1,0 +1,86 @@
+---
+title: "Auto-activate: Open Reader Mode on every video load"
+description: "The auto-activate setting automatically enters Reader Mode when a YouTube video with AI Chat loads, triggering immediately on every new video navigation."
+---
+
+Auto-activate watches every YouTube navigation and automatically triggers Reader Mode if the setting is enabled. It is turned on by default. When you open any YouTube video that has AI Chat available, the extension will open the chat panel and activate the overlay without any manual interaction.
+
+## How auto-activate works
+
+Every YouTube navigation emits an `APP_INIT` event on the extension's internal event bus. `ReaderModeController` listens for this event and calls `activate()`, which checks `StateManager.settings.autoActivate` before proceeding:
+
+```javascript
+activate() {
+  if (StateManager.settings.autoActivate) {
+    this._activateInternal();
+  }
+},
+```
+
+`_activateInternal()` first clicks the YouTube AI Chat entry point button to open the panel. If the panel is already loaded, activation completes immediately. Otherwise, the extension sets up a `MutationObserver` on the `ytd-app` container and waits for the chat textarea to appear in the DOM:
+
+```javascript
+_activateInternal() {
+  if (!PanelManager.triggerAskButton()) {
+    return;
+  }
+
+  if (PanelManager.isPanelLoaded()) {
+    this._completeActivation();
+    return;
+  }
+
+  this._clearWaiters();
+
+  const targetNode = YouTubeFacade.getAppContainer();
+
+  this._activationObserver = new MutationObserver((mutations, obs) => {
+    if (StateManager.isActive) {
+      this._clearWaiters();
+      return;
+    }
+    if (PanelManager.isPanelLoaded()) {
+      this._clearWaiters();
+      this._completeActivation();
+    }
+  });
+
+  this._activationObserver.observe(targetNode, { childList: true, subtree: true });
+
+  this._activationTimeout = setTimeout(() => {
+    this._clearWaiters();
+  }, this._maxWaitMs);
+},
+```
+
+The observer waits up to **10 seconds** (`_maxWaitMs: 10000`) for the panel to load. If the panel does not become ready within that window, the observer and timeout are cleared and activation is abandoned silently. This prevents the extension from hanging indefinitely on videos where AI Chat is slow to initialize or unavailable.
+
+## Enabling and disabling
+
+Auto-activate is controlled from the extension popup:
+
+<Steps>
+  <Step title="Open the extension popup">
+    Click the YT Reader Mode icon in your browser toolbar.
+  </Step>
+  <Step title="Toggle Auto-activate">
+    Click the **Auto-activate Reader Mode** toggle switch to enable or disable the setting.
+  </Step>
+  <Step title="Setting is saved immediately">
+    The change is written to `chrome.storage.sync` the moment the toggle changes — no Save button is required.
+  </Step>
+</Steps>
+
+The toggle listener in the popup writes to storage immediately on change:
+
+```javascript
+autoActivateCheckbox.addEventListener('change', function () {
+  chrome.storage.sync.set({ autoActivate: this.checked });
+});
+```
+
+Because the setting is stored in `chrome.storage.sync`, it persists across browser sessions and syncs to all Chrome profiles where you are signed in and have the extension installed.
+
+<Tip>
+Disable auto-activate if you prefer to open Reader Mode manually. You can still use the **Reader** button in YouTube's action bar to enter Reader Mode at any time.
+</Tip>

@@ -1,0 +1,103 @@
+---
+title: "StateManager: Single source of truth for runtime state"
+description: "StateManager holds all runtime state for YT Reader Mode and broadcasts changes via EventBus so every module stays in sync without direct dependencies."
+---
+
+`StateManager` is the single source of truth for all runtime state in YT Reader Mode. Every state read and every state write flows through it. When state changes, `StateManager` automatically notifies the rest of the system by emitting events on the `EventBus` — no module needs to poll, observe, or fetch state on its own.
+
+```javascript stateManager.js
+const StateManager = {
+  _state: {
+    isActive: false,
+    settings: {
+      autoActivate: true,
+      initialPromptEnabled: true,
+      initialPromptText: 'Summarize the video'
+    }
+  },
+
+  get isActive() {
+    return this._state.isActive;
+  },
+
+  get settings() {
+    return this._state.settings;
+  },
+
+  setSettings(newSettings) {
+    this._state.settings = Object.assign({}, this._state.settings, newSettings);
+    EventBus.emit('SETTINGS_CHANGED', this._state.settings);
+  },
+
+  setActive(isActive) {
+    if (this._state.isActive === isActive) return;
+    this._state.isActive = isActive;
+    EventBus.emit('STATE_CHANGED', { isActive: this._state.isActive });
+  }
+};
+```
+
+## State shape
+
+The `_state` object holds all runtime state for the extension:
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `isActive` | `boolean` | `false` | Whether Reader Mode is currently active |
+| `settings.autoActivate` | `boolean` | `true` | Whether to automatically activate Reader Mode when a compatible video loads |
+| `settings.initialPromptEnabled` | `boolean` | `true` | Whether to auto-send the initial prompt when Reader Mode activates |
+| `settings.initialPromptText` | `string` | `'Summarize the video'` | The text sent to the AI Chat panel on activation |
+
+## API reference
+
+### `StateManager.isActive` (getter)
+
+Returns the current `boolean` active state. Read by `ReaderModeController` to guard against no-op deactivation calls, and by `ToggleButton` to render the correct initial icon on inject.
+
+```javascript
+if (StateManager.isActive) {
+  ReaderModeController.deactivate();
+}
+```
+
+### `StateManager.settings` (getter)
+
+Returns the current settings object. Read by `ReaderModeController` to check `autoActivate` before attempting activation, and to read `initialPromptEnabled` and `initialPromptText` before calling `PanelManager.sendMessage()`.
+
+```javascript
+if (StateManager.settings.autoActivate) {
+  this._activateInternal();
+}
+```
+
+### `StateManager.setSettings(newSettings)`
+
+Merges a partial settings object into the current settings using `Object.assign`, then emits `SETTINGS_CHANGED` with the full merged settings as the payload. Called by `SettingsManager` after loading from or detecting changes in `chrome.storage.sync`.
+
+```javascript
+StateManager.setSettings({ autoActivate: false });
+// Emits: SETTINGS_CHANGED with full settings object
+```
+
+### `StateManager.setActive(isActive)`
+
+Sets the active state and emits `STATE_CHANGED` with `{ isActive }` as the payload. If the new value equals the current value, the method returns immediately without emitting — preventing redundant re-renders. Called by `ReaderModeController` at the end of both `_completeActivation()` and `deactivate()`.
+
+```javascript
+StateManager.setActive(true);
+// Emits: STATE_CHANGED { isActive: true }
+
+StateManager.setActive(true); // no-op — already true, no event emitted
+```
+
+## Reactivity
+
+State changes flow outward automatically through `EventBus`:
+
+- `setActive` emits `STATE_CHANGED` with `{ isActive }` → `ToggleButton.update()` reacts by switching the button icon and label between **Reader** and **Video**.
+- `setSettings` emits `SETTINGS_CHANGED` with the full settings object → any subscriber can react to updated preferences without reading from storage directly.
+- Both methods are idempotent for the same value: `setActive` checks the current value before emitting, so calling it repeatedly with the same argument does not generate redundant events.
+
+<Note>
+  `StateManager` state is in-memory only and resets on every YouTube SPA navigation. Settings persistence across navigations and devices is handled by `SettingsManager`, which reads from and writes to `chrome.storage.sync` and then calls `StateManager.setSettings()` to update the in-memory state.
+</Note>

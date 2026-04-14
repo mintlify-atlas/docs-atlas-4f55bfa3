@@ -1,0 +1,100 @@
+---
+title: "Extension popup settings: all configuration options"
+description: "All configuration options available in the YT Reader Mode browser extension popup, including auto-activate, send automatically, and initial prompt text."
+---
+
+The popup is your control panel for YT Reader Mode. Access it by clicking the extension icon in the browser toolbar. Changes take effect immediately without a page reload.
+
+## Available settings
+
+### Auto-activate Reader Mode
+
+| Property | Value |
+|----------|-------|
+| Element ID | `autoActivate` |
+| Type | boolean |
+| Default | `true` |
+
+When enabled, the extension automatically enters Reader Mode every time a YouTube video with AI Chat loads. Disabling this setting lets you open Reader Mode manually instead.
+
+### Send automatically
+
+| Property | Value |
+|----------|-------|
+| Element ID | `initialPromptEnabled` |
+| Type | boolean |
+| Default | `true` |
+
+Controls whether the initial prompt is submitted automatically when Reader Mode activates. When off, Reader Mode still opens but does not send any message.
+
+### Initial Prompt text
+
+| Property | Value |
+|----------|-------|
+| Element ID | `initialPromptText` |
+| Type | string |
+| Default | `"Summarize the video"` |
+
+The message sent to YouTube AI Chat when Reader Mode activates and **Send automatically** is on. You can replace it with any question or instruction you want to send at the start of every video session.
+
+These defaults come directly from `popup.js`:
+
+```javascript
+chrome.storage.sync.get({
+  autoActivate: true,
+  initialPromptEnabled: true,
+  initialPromptText: 'Summarize the video'
+}, function (items) {
+  autoActivateCheckbox.checked = items.autoActivate;
+  initialPromptEnabled.checked = items.initialPromptEnabled;
+  initialPromptText.value = items.initialPromptText || '';
+});
+```
+
+## Saving settings
+
+Each setting has its own save behavior:
+
+- **Auto-activate Reader Mode** — saved to `chrome.storage.sync` immediately when the toggle changes.
+- **Send automatically** — saved to `chrome.storage.sync` immediately when the toggle changes.
+- **Initial Prompt text** — saved to `chrome.storage.sync` on every keystroke as you type, and also explicitly when you click **Save Prompt**.
+
+The **Save Prompt** button briefly shows "Saved!" for 1.5 seconds to confirm the write, then returns to its original label:
+
+```javascript
+savePromptBtn.addEventListener('click', function () {
+  saveInitialPrompt();
+  savePromptBtn.textContent = 'Saved!';
+  setTimeout(function () {
+    savePromptBtn.textContent = 'Save Prompt';
+  }, 1500);
+});
+```
+
+Because keystroke saving already keeps the value up to date, clicking **Save Prompt** is optional — it is there for confirmation.
+
+## Settings and navigation
+
+Every time you open the popup, `loadSettings()` reads the current values from `chrome.storage.sync` and populates all controls. This means the popup always reflects the latest saved state, even if you changed settings from another Chrome window.
+
+The extension's content script also stays in sync in real time. `SettingsManager.init()` registers a `chrome.storage.onChanged` listener in the page context:
+
+```javascript
+init() {
+  this.load();
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'sync') {
+      chrome.storage.sync.get((items) => {
+        const settings = { ...this._defaults, ...items };
+        StateManager.setSettings(settings);
+      });
+    }
+  });
+}
+```
+
+When you toggle a setting in the popup, the `onChanged` event fires in any open YouTube tab. The new values are read from storage, merged with defaults, and passed to `StateManager.setSettings()`, which emits a `SETTINGS_CHANGED` event. Components that depend on settings react to this event immediately — no page reload required.
+
+<Tip>
+Settings are stored in `chrome.storage.sync`, so they sync automatically across every Chrome browser where you are signed in with the same Google account.
+</Tip>

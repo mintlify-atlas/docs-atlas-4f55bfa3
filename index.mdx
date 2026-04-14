@@ -1,97 +1,55 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "YT Reader Mode: Distraction-free YouTube AI Chat"
+description: "YT Reader Mode is a browser extension that replaces the YouTube video player with the native AI Chat panel, giving you a focused reading experience."
 ---
 
-## Setting up
+YT Reader Mode transforms how you interact with YouTube by overlaying the native YouTube AI Chat panel directly on top of the video player. Instead of watching videos passively, you can read AI-generated summaries, ask questions, and explore content — all without distractions from the video itself.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Introduction" icon="book-open" href="/introduction">
+    Learn what YT Reader Mode is and how it works
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Installation" icon="download" href="/installation">
+    Install the extension on Chrome, Edge, Brave, or Firefox
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Reader Mode" icon="book" href="/features/reader-mode">
+    Understand the core reader mode toggle and behavior
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Configuration" icon="sliders" href="/configuration/popup-settings">
+    Customize auto-activate, prompts, and settings
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Get started in minutes
 
-Everything you need to create world-class documentation.
+<Steps>
+  <Step title="Clone or download the repository">
+    Get the source code from [GitHub](https://github.com/meyer-pidiache/yt-reader-mode) to your local machine.
+  </Step>
+  <Step title="Load the extension in your browser">
+    Open `chrome://extensions/`, enable **Developer mode**, click **Load unpacked**, and select the project folder.
+  </Step>
+  <Step title="Navigate to a YouTube video">
+    Open any YouTube video that has the AI Chat feature available. YT Reader Mode activates automatically.
+  </Step>
+  <Step title="Customize your experience">
+    Click the extension icon in your browser toolbar to configure auto-activate behavior and set an initial prompt.
+  </Step>
+</Steps>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Key features
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Auto-activate" icon="bolt" href="/features/auto-activate">
+    Automatically enters Reader Mode when you open a YouTube video with AI capabilities
+  </Card>
+  <Card title="Initial Prompts" icon="message" href="/features/initial-prompts">
+    Set a custom prompt to send to the AI automatically when a video loads
+  </Card>
+  <Card title="Smart Timestamps" icon="clock" href="/features/smart-timestamps">
+    Click AI-suggested timestamps to switch seamlessly back to video mode
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/architecture/overview">
+    Explore the event-driven, zero-dependency architecture
+  </Card>
+</CardGroup>

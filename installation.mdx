@@ -1,0 +1,87 @@
+---
+title: "Install YT Reader Mode on Chrome, Edge, or Firefox"
+description: "Install YT Reader Mode in developer mode on Chromium-based browsers or Firefox — no browser store required, just load the unpacked source folder."
+---
+
+YT Reader Mode is not published to the Chrome Web Store or Firefox Add-ons marketplace. You install it directly from source in developer mode, which means you control exactly what version you run. The process takes about two minutes and requires no build step — the extension is written in plain Vanilla JS with no bundler, so the source folder is the installable artifact.
+
+<Tabs>
+  <Tab title="Chrome / Edge / Brave">
+    <Steps>
+      <Step title="Clone or download the repository">
+        Clone the repository to a permanent location on your machine. Moving the folder after installation will break the extension.
+
+        ```bash
+        git clone https://github.com/meyer-pidiache/yt-reader-mode
+        ```
+
+        Alternatively, download the source as a ZIP from the GitHub repository page and extract it.
+      </Step>
+      <Step title="Open the extensions page">
+        In your browser's address bar, navigate to:
+
+        ```
+        chrome://extensions/
+        ```
+
+        Edge and Brave use the same URL.
+      </Step>
+      <Step title="Enable Developer mode">
+        Toggle the **Developer mode** switch in the top-right corner of the extensions page. Additional options will appear, including **Load unpacked**.
+      </Step>
+      <Step title="Load the unpacked extension">
+        Click **Load unpacked** and select the root folder of the cloned repository — the folder that contains `manifest.json`. Do not select a subfolder.
+      </Step>
+      <Step title="Verify the installation">
+        Navigate to [youtube.com](https://www.youtube.com) and open a video. If the video has AI Chat enabled, a **Reader** button will appear in the video action bar and the extension will be ready to use.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Firefox">
+    <Steps>
+      <Step title="Clone or download the repository">
+        Clone the repository to your local machine:
+
+        ```bash
+        git clone https://github.com/meyer-pidiache/yt-reader-mode
+        ```
+
+        Or download and extract the ZIP from the GitHub repository page.
+      </Step>
+      <Step title="Open the debugging page">
+        In the Firefox address bar, navigate to:
+
+        ```
+        about:debugging
+        ```
+      </Step>
+      <Step title="Load a temporary add-on">
+        Click **This Firefox** in the left sidebar, then click **Load Temporary Add-on...**.
+      </Step>
+      <Step title="Select the manifest file">
+        In the file picker, navigate to the cloned repository folder and select the `manifest.json` file directly (not the folder itself).
+      </Step>
+      <Step title="Verify the installation">
+        Navigate to [youtube.com](https://www.youtube.com) and open a video. If the video has AI Chat enabled, a **Reader** button will appear in the video action bar.
+      </Step>
+    </Steps>
+
+    <Warning>
+      Firefox temporary add-ons are removed when the browser restarts. You must repeat the load process each time you start Firefox. Persistent installation requires a signed extension.
+    </Warning>
+  </Tab>
+</Tabs>
+
+<Note>
+  The extension only activates on YouTube videos where the AI Chat feature is enabled by YouTube. If you do not see the **Reader** button on a video, that video does not have AI Chat available on your account.
+</Note>
+
+## Verifying the installation
+
+After loading the extension, open any YouTube video and look for these indicators:
+
+- A **Reader** button appears in the video action bar beneath the player.
+- If you have auto-activate enabled (the default), the AI Chat panel overlays the video player automatically on compatible videos.
+- Clicking the extension icon in the browser toolbar opens the popup, where you can configure auto-activate behavior and set an initial prompt.
+
+If neither indicator appears, check that the extension is enabled on the extensions page and that the video you are viewing has YouTube's AI Chat feature available.

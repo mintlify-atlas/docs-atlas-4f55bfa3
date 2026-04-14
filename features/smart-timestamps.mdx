@@ -1,0 +1,45 @@
+---
+title: "Smart Timestamps: Jump to video moments from AI"
+description: "Clicking a timestamp in the YouTube AI Chat response automatically exits Reader Mode and returns you to the video player at that moment."
+---
+
+Smart Timestamps bridge the Reader Mode overlay and video playback. When the YouTube AI references a specific moment in the video — for example, a link rendered as `0:40` — clicking that timestamp automatically deactivates Reader Mode so the player becomes visible and YouTube's native seek behavior navigates to the referenced moment.
+
+## How timestamps work
+
+YouTube AI Chat renders timestamp links using the CSS class `ytwMarkdownDivTimestamp`. When Reader Mode activates, `PanelManager.startPanelObserver()` attaches a click listener to the engagement panel that checks every click target against this class:
+
+```javascript
+this._timestampListener = (e) => {
+  if (YouTubeFacade.isTimestamp(e.target)) {
+    EventBus.emit('PANEL_CLOSED_BY_USER');
+  }
+};
+panel.addEventListener('click', this._timestampListener);
+```
+
+The `isTimestamp` check in `YouTubeFacade` is a direct `classList.contains` lookup:
+
+```javascript
+isTimestamp(element) {
+  return element && element.classList && element.classList.contains('ytwMarkdownDivTimestamp');
+}
+```
+
+When a timestamp click is detected, the `PANEL_CLOSED_BY_USER` event is emitted on the event bus. `ReaderModeController` listens for this event and calls `deactivate()`:
+
+```javascript
+EventBus.on('PANEL_CLOSED_BY_USER', () => ReaderModeController.deactivate());
+```
+
+Deactivation removes `body.yt-reader-mode`, clears the panel's inline position styles, stops the `ResizeObserver` and panel `MutationObserver`, and programmatically closes the AI Chat panel. The player becomes visible again at its original dimensions and YouTube's built-in timestamp seek takes effect, jumping playback to the referenced time.
+
+## Returning to Reader Mode
+
+After watching the referenced video segment, you can re-enter Reader Mode at any time by clicking the **Reader** button in YouTube's action bar.
+
+Auto-activate does not re-trigger within the same video navigation — it only fires on `APP_INIT`, which is emitted when navigating to a new video page. Clicking a timestamp and then clicking **Reader** again will reopen the overlay and, if an initial prompt is configured, submit it again.
+
+<Info>
+Timestamp detection relies on YouTube's internal CSS class `ytwMarkdownDivTimestamp`. If YouTube renames this class in a future update, timestamp-based exit will stop working until the class name is updated in `YouTubeFacade.isTimestamp()`.
+</Info>

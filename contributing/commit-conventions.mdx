@@ -1,0 +1,59 @@
+---
+title: "Commit conventions: Conventional Commits in YT Reader Mode"
+description: "YT Reader Mode follows the Conventional Commits standard for consistent, human-readable history and to enable future semantic release automation."
+---
+
+YT Reader Mode follows the [Conventional Commits](https://www.conventionalcommits.org/) specification — every commit message uses a structured format that makes history readable and enables semantic release automation. Neatness is non-negotiable: inconsistent or vague messages are grounds for requesting changes during review.
+
+## Commit format
+
+Every commit message follows this structure:
+
+```text
+<type>: <short description in imperative mood>
+```
+
+The `type` identifies what category of change the commit makes. The description should complete the sentence "If applied, this commit will…" — kept concise and in the imperative mood.
+
+## Commit types
+
+| Type | Purpose | Example |
+|---|---|---|
+| `feat` | New architectural addition or extension feature | `feat: add keyboard shortcut for toggle` |
+| `fix` | Resolves a bug or logic flaw | `fix: panel not centering on wide screens` |
+| `docs` | Documentation adjustments | `docs: update installation steps for Firefox` |
+| `refactor` | Optimization without behavior change | `refactor: simplify syncPosition calculation` |
+| `style` | Syntax or formatting cleanup that does not alter the final product | `style: normalize spacing in stateManager` |
+
+## Writing good messages
+
+- **Use imperative mood.** Write "add", "fix", "update" — not "added", "fixed", "updated". The subject line should read as an instruction, not a past-tense description.
+- **Keep the description concise.** Aim for under 72 characters in the subject line. If more context is needed, add a blank line after the subject followed by a longer body.
+- **Reference the architectural component when relevant.** If your fix is specific to a module, name it: `fix: YouTubeFacade selector for chat send button` is more useful than `fix: selector broken`.
+- **Do not include ticket numbers or tooling metadata in the subject line.** Issue references belong in the PR description or the commit body, not the subject.
+
+## Examples
+
+<CodeGroup>
+
+```text Good commits
+feat: add initial prompt auto-submit on activation
+fix: deactivate reader mode on YouTube SPA navigation
+refactor: extract timestamp listener to PanelManager
+docs: document EventBus off() cleanup pattern
+style: normalize spacing in stateManager
+```
+
+```text Bad commits
+updated stuff
+fixed bug
+WIP
+fix #123
+LGTM
+```
+
+</CodeGroup>
+
+<Tip>
+  These conventions support future semantic versioning automation. `feat` commits increment the **minor** version, `fix` commits increment the **patch** version, and a `BREAKING CHANGE` note in the commit body triggers a **major** version bump — matching the SemVer specification exactly.
+</Tip>

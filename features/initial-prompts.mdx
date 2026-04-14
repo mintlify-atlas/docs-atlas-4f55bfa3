@@ -1,0 +1,77 @@
+---
+title: "Initial Prompts: Auto-submit a question when AI Chat opens"
+description: "Set a message that is sent to YouTube AI Chat automatically when Reader Mode activates, delivering instant summaries or answers without typing."
+---
+
+Initial Prompts let you configure a message that is automatically submitted to the YouTube AI Chat every time Reader Mode activates. Instead of typing the same question on every video, you can set a prompt once — such as "Summarize the video" — and have it sent the moment the chat panel is ready.
+
+## Setting up an initial prompt
+
+<Steps>
+  <Step title="Open the extension popup">
+    Click the YT Reader Mode icon in your browser toolbar to open the popup.
+  </Step>
+  <Step title="Enable Send automatically">
+    Toggle the **Send automatically** switch to the on position. This is enabled by default.
+  </Step>
+  <Step title="Enter your prompt">
+    Type your desired message in the text area. The default text is `Summarize the video`. The text is saved to `chrome.storage.sync` as you type.
+  </Step>
+  <Step title="Save the prompt">
+    Click **Save Prompt** to confirm. The button briefly shows "Saved!" to confirm the write. Saving is also automatic on every keystroke, so the explicit save button is optional.
+  </Step>
+</Steps>
+
+## Default prompt
+
+The extension ships with a default prompt of `Summarize the video`, stored in `StateManager`:
+
+```javascript
+settings: {
+  autoActivate: true,
+  initialPromptEnabled: true,
+  initialPromptText: 'Summarize the video'
+}
+```
+
+The prompt is sent **500 milliseconds** after Reader Mode completes activation. This delay allows the AI Chat panel to finish rendering before the message is dispatched:
+
+```javascript
+if (StateManager.settings.initialPromptEnabled && StateManager.settings.initialPromptText) {
+  setTimeout(() => {
+    PanelManager.sendMessage(StateManager.settings.initialPromptText);
+  }, 500);
+}
+```
+
+## How the message is sent
+
+`PanelManager.sendMessage()` locates the chat textarea and send button using `YouTubeFacade` selectors, sets the textarea content, and fires the DOM events YouTube's input handlers require before clicking Send:
+
+```javascript
+sendMessage(text) {
+  const textarea = YouTubeFacade.getChatTextarea();
+  const button = YouTubeFacade.getChatSendButton();
+  if (textarea && button) {
+    textarea.innerText = text;
+    textarea.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    textarea.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    textarea.dispatchEvent(new Event('keyup', { bubbles: true, composed: true }));
+    setTimeout(() => {
+      if (!button.disabled) {
+        button.click();
+      }
+    }, 100);
+  }
+}
+```
+
+The 100 ms debounce before clicking Send gives YouTube's reactive input handling time to enable the send button after the `input` event. The button's `disabled` state is checked before clicking to guard against edge cases where the panel is not yet fully interactive.
+
+## Disabling initial prompts
+
+To stop the prompt from being sent automatically, open the popup and toggle **Send automatically** off. Your prompt text is preserved in storage even while the feature is disabled, so it will be used again if you re-enable it later.
+
+<Note>
+The prompt is sent to the AI Chat session for the current video. Each navigation to a new video triggers a fresh submission when Reader Mode activates, so you receive a new response for every video you open.
+</Note>

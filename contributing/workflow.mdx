@@ -1,0 +1,95 @@
+---
+title: "Contribution workflow: trunk-based development guide"
+description: "Learn how to fork, branch, test, and submit pull requests to YT Reader Mode using the trunk-based development model with short-lived feature branches."
+---
+
+YT Reader Mode uses Trunk-Based Development — all contributions flow through short-lived feature branches and are merged quickly to `main`, keeping the codebase stable and integration continuous. Direct commits to `main` are never accepted.
+
+## Development model
+
+- **`main` is always stable and ready for deployment** — no direct commits to the base branch, ever.
+- **Branches are short-lived** — hours to a few days, not weeks. If your change is large, break it into smaller, independent pieces.
+- **Multiple small PRs are preferred** over one large PR — this prevents merge conflicts and keeps review cycles fast.
+- **Atomic commits with descriptive messages** — each commit should represent one logical change and explain what it does.
+
+## Step-by-step workflow
+
+<Steps>
+  <Step title="Fork the repository on GitHub">
+    Visit [github.com/meyer-pidiache/yt-reader-mode](https://github.com/meyer-pidiache/yt-reader-mode) and click **Fork** to create your own copy.
+  </Step>
+  <Step title="Clone your fork">
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/yt-reader-mode.git
+    ```
+  </Step>
+  <Step title="Add the upstream remote">
+    ```bash
+    git remote add upstream https://github.com/meyer-pidiache/yt-reader-mode.git
+    ```
+    This lets you pull in future changes from the original repository.
+  </Step>
+  <Step title="Create a short-lived branch">
+    ```bash
+    git checkout -b feat/your-feature
+    # or
+    git checkout -b fix/your-fix
+    ```
+    See [branch naming](#branch-naming) below for the full convention.
+  </Step>
+  <Step title="Make atomic changes">
+    Implement your change in focused, self-contained commits. Each commit should do one thing and pass all tests independently.
+  </Step>
+  <Step title="Test locally">
+    Load the extension unpacked at `chrome://extensions/` and verify your change works correctly. See [local testing](#local-testing) for the full checklist.
+  </Step>
+  <Step title="Commit with conventional format">
+    Write your commit message following the [Conventional Commits](/contributing/commit-conventions) standard used by this project.
+  </Step>
+  <Step title="Push and open a Pull Request to main">
+    ```bash
+    git push origin feat/your-feature
+    ```
+    Open a PR from your branch to `main` on the upstream repository. Describe what you changed and why.
+  </Step>
+</Steps>
+
+## Branch naming
+
+Prefix every branch with the type of change it contains, followed by a short kebab-case description:
+
+| Prefix | Use for |
+|---|---|
+| `feat/<description>` | New features or extension capabilities |
+| `fix/<description>` | Bug fixes and logic corrections |
+| `docs/<description>` | Documentation changes only |
+| `refactor/<description>` | Internal refactoring without behavior change |
+| `style/<description>` | Formatting, whitespace, or syntax cleanup |
+
+**Examples:** `feat/keyboard-shortcut`, `fix/broken-panel-selector`, `docs/update-installation-steps`
+
+## Critical architectural rules
+
+Three rules are strictly enforced before any change is accepted into `main`. Violations will block the PR.
+
+<Warning>
+  **All cross-module communication must go through `EventBus.emit` / `EventBus.on`.** Never call another module's methods directly (for example, `Controller.do()` at the global scope). Direct calls create tight coupling and defeat the entire architectural design. See the [EventBus reference](/architecture/event-bus) for details.
+</Warning>
+
+<Warning>
+  **All YouTube DOM queries must live exclusively in `src/core/youtubeFacade.js`.** Never write a `querySelector` for a YouTube node anywhere else in the codebase. YouTube changes its DOM structure frequently — centralizing all selectors in the Facade means a single file to update when YouTube breaks something.
+</Warning>
+
+<Info>
+  **Do not use IIFEs or dynamic bundling.** The extension relies on the native isolation that `content_scripts` provide. Each file is a plain object literal that self-registers on the `EventBus`. Preserve the flat, structured format — introducing a bundler or IIFE wrappers would break the load-order contract.
+</Info>
+
+## Local testing
+
+Before opening a PR, verify the core flow manually:
+
+1. Open `chrome://extensions/` in a Chromium-based browser, enable **Developer mode**, click **Load unpacked**, and select the repository root.
+2. Navigate to a YouTube video that has the AI Chat panel available.
+3. Confirm the **Reader** toggle button appears in the player controls.
+4. Activate Reader Mode and verify the AI Chat panel overlays the video correctly.
+5. Open the browser console (`F12`) and check for any unhandled errors or warnings.

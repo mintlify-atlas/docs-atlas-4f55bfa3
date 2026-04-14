@@ -1,0 +1,55 @@
+---
+title: "What is YT Reader Mode? Overview and how it works"
+description: "A browser extension that overlays the YouTube AI Chat panel over the video player, giving you a distraction-free reading experience on compatible videos."
+---
+
+YT Reader Mode is a lightweight browser extension that replaces the YouTube video player with the native AI Chat panel. When you open a YouTube video that has AI Chat enabled, the extension injects content scripts that watch for navigation events, trigger the Ask button, and position the chat panel precisely over the player area — matching its dimensions exactly. The result is a focused, reading-oriented interface that removes the video from view without leaving YouTube.
+
+<CardGroup cols={2}>
+  <Card title="Reader Mode" icon="book" href="/features/reader-mode">
+    Toggle between the video player and the AI Chat panel with synchronized positioning
+  </Card>
+  <Card title="Auto-activate" icon="bolt" href="/features/auto-activate">
+    Automatically enter Reader Mode when you open a video with AI capabilities
+  </Card>
+  <Card title="Initial Prompts" icon="message" href="/features/initial-prompts">
+    Send a custom prompt to the AI automatically as soon as the video loads
+  </Card>
+  <Card title="Smart Timestamps" icon="clock" href="/features/smart-timestamps">
+    Click AI-suggested timestamps to switch back to video mode for the referenced segment
+  </Card>
+</CardGroup>
+
+## How it works
+
+When you navigate to a YouTube video, the extension's content scripts load at `document_idle` and register a navigation watcher. The watcher listens for YouTube's client-side navigation events — since YouTube is a single-page application, full page reloads do not occur between videos.
+
+Once a compatible video is detected, the extension:
+
+1. Triggers YouTube's native **Ask** button to open the AI Chat panel.
+2. Measures the video player's position and dimensions in the DOM.
+3. Overlays the chat panel over the player with synchronized positioning, so the two elements occupy the same space.
+4. Exposes a toggle button in the video action bar so you can switch between reader and video modes.
+
+All DOM queries are routed through a `YoutubeFacade` interface that isolates fragile YouTube-specific selectors from the rest of the codebase. State changes propagate through a strict publish/subscribe `EventBus`, so each module reacts to updates without being directly coupled to others.
+
+## Browser compatibility
+
+YT Reader Mode supports Chromium-based browsers and Firefox via Manifest V3:
+
+| Browser | Support |
+|---------|---------|
+| Chrome  | Supported |
+| Edge    | Supported |
+| Brave   | Supported |
+| Firefox | Supported (temporary install) |
+
+## Requirements
+
+- The YouTube video must have the AI Chat feature enabled. Not all videos or accounts have access to this feature.
+- No account registration or API key is required — the extension uses YouTube's native AI Chat interface.
+- The extension uses `chrome.storage.sync` to persist your settings across devices where you are signed in to your browser.
+
+<Note>
+  YT Reader Mode is an open-source project licensed under the [PolyForm Noncommercial License 1.0.0](https://github.com/meyer-pidiache/yt-reader-mode/blob/main/LICENSE.md). It is free to use, modify, and distribute for personal and non-commercial purposes.
+</Note>

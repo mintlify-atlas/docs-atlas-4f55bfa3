@@ -1,0 +1,80 @@
+---
+title: "YouTubeFacade: Isolating YouTube DOM selectors"
+description: "YouTubeFacade centralizes all YouTube DOM selectors into one file, isolating the rest of the codebase from breakage when YouTube changes its interface."
+---
+
+YouTube frequently mutates its DOM structure, element IDs, and CSS class names without notice. If every module contained its own `document.querySelector` calls, a single YouTube update could scatter breakage across the entire codebase. `YouTubeFacade` centralizes every DOM selector used by the extension into one file. When YouTube changes its interface, only this one file needs updating — every other module stays untouched.
+
+```javascript youtubeFacade.js
+const YouTubeFacade = {
+  getAppContainer() {
+    return document.querySelector('ytd-app') || document.body;
+  },
+
+  getPlayer() {
+    return document.getElementById('player');
+  },
+
+  getEngagementPanel() {
+    return document.querySelector('ytd-engagement-panel-section-list-renderer[target-id="PAyouchat"]');
+  },
+
+  getAskButton() {
+    return document.querySelector('.you-chat-entrypoint-button button');
+  },
+
+  getChatTextarea() {
+    return document.querySelector('yt-chat-input-view-model textarea.chatInputViewModelChatInput');
+  },
+
+  getChatSendButton() {
+    return document.querySelector('yt-chat-input-view-model button[aria-label="Send"]');
+  },
+
+  isTimestamp(element) {
+    return element && element.classList && element.classList.contains('ytwMarkdownDivTimestamp');
+  }
+};
+```
+
+## Method reference
+
+### `getAppContainer()`
+
+Returns the `ytd-app` element, or falls back to `document.body` if it is not present. Used as the root node for `MutationObserver` instances in `ReaderModeController` and `ToggleButton`, so they can watch the full YouTube application tree for DOM changes.
+
+### `getPlayer()`
+
+Returns the `#player` element. Used by `PanelManager` to read the player's position and dimensions via `getBoundingClientRect()`, and by `ReaderModeController` to pause the video on activation.
+
+### `getEngagementPanel()`
+
+Returns the `ytd-engagement-panel-section-list-renderer` element with `target-id="PAyouchat"` — the container for YouTube's AI Chat panel. Used by `PanelManager` to expand the panel, sync its position over the player, and observe its `visibility` attribute for close events.
+
+### `getAskButton()`
+
+Returns the `.you-chat-entrypoint-button button` — the button that triggers YouTube's AI Chat to open. Called by `PanelManager.triggerAskButton()` at the start of every activation attempt. If this button is absent, the extension cannot open the AI Chat panel and activation aborts.
+
+### `getChatTextarea()`
+
+Returns the `textarea.chatInputViewModelChatInput` inside `yt-chat-input-view-model`. Used by `PanelManager.sendMessage()` to populate the chat input field before dispatching input events to trigger YouTube's internal state update.
+
+### `getChatSendButton()`
+
+Returns the `button[aria-label="Send"]` inside `yt-chat-input-view-model`. Clicked by `PanelManager.sendMessage()` after populating the textarea, submitting the initial prompt to the AI.
+
+### `isTimestamp(element)`
+
+Returns `true` if the given element has the `ytwMarkdownDivTimestamp` CSS class. Used in `PanelManager.startPanelObserver()` to detect when a user clicks a timestamp link in the AI Chat response, which triggers `PANEL_CLOSED_BY_USER` and deactivates Reader Mode.
+
+## Selector stability
+
+<Warning>
+  These selectors are based on YouTube's current DOM structure and may break without notice if YouTube updates its interface. All contributors must update selectors **only** in `YouTubeFacade` — never write `querySelector` or `getElementById` calls anywhere else in the codebase.
+</Warning>
+
+The CONTRIBUTING guide enforces this as a hard rule: any DOM containment change must go through `YouTubeFacade`. This single-file ownership means that when a selector breaks, the fix is always in the same place, the diff is always small, and the impact is always auditable.
+
+<Tip>
+  If Reader Mode stops working after a YouTube update, check `YouTubeFacade` first. The fix is usually updating one selector — a one-line change in a single file.
+</Tip>

@@ -1,0 +1,58 @@
+---
+title: "Reader Mode: AI Chat overlaid on the video player"
+description: "Reader Mode superimposes the YouTube AI Chat panel over the video player, hiding the video and syncing the panel to the exact player dimensions."
+---
+
+Reader Mode replaces the YouTube video player with the YouTube AI Chat panel. When active, the AI Chat panel expands and overlays the exact pixel dimensions of the player — hiding the video while keeping it in the DOM — so you can read AI responses in the same visual space the video occupied.
+
+## Toggling Reader Mode
+
+A **Reader** button is injected into YouTube's action bar alongside the Like, Share, and other action buttons. Clicking it activates Reader Mode. While Reader Mode is active, the button icon switches to a **Video** play icon, indicating that clicking it will return you to the player.
+
+The button is only shown on video pages where YouTube AI Chat is available. The extension uses a `MutationObserver` to watch for the AI Chat entry point button and hides the toggle until that button is detected.
+
+```javascript
+const askBtn = YouTubeFacade.getAskButton();
+if (askBtn && this._button) {
+  this._button.style.display = '';
+  if (this._visibilityObserver) {
+    this._visibilityObserver.disconnect();
+    this._visibilityObserver = null;
+  }
+}
+```
+
+Keyboard users can activate the toggle button with a click. Clicking a timestamp link in any AI Chat response also exits Reader Mode automatically.
+
+## What happens when you activate
+
+When Reader Mode activates, the following steps happen in sequence:
+
+1. The video element is paused via `video.pause()`.
+2. The AI Chat engagement panel's `visibility` attribute is set to `ENGAGEMENT_PANEL_VISIBILITY_EXPANDED`.
+3. `body.yt-reader-mode` is added to the document body, which applies all overlay CSS rules.
+4. `PanelManager.syncPosition()` reads the player's `getBoundingClientRect()` and applies matching `top`, `left`, `width`, and `height` values to the panel as inline styles.
+5. A `ResizeObserver` is started on the player element. Any time the player's dimensions change — for example, when the browser window is resized — `syncPosition()` is called again to keep the panel aligned.
+
+The `body.yt-reader-mode` class drives the visual state. Key rules applied by `src/styles/main.css`:
+
+| Selector | Effect |
+|---|---|
+| `body.yt-reader-mode #player` | `opacity: 0; pointer-events: none` — player is invisible and non-interactive |
+| `body.yt-reader-mode ytd-engagement-panel-section-list-renderer[target-id="PAyouchat"]` | `position: absolute; z-index: 9999` — panel floats above page content |
+| `body.yt-reader-mode #secondary, #panels, ytd-watch-flexy` | `contain: none; transform: none; position: static` — removes stacking context constraints so `position: absolute` on the panel resolves to the viewport |
+
+The player remains in the DOM throughout — it is never removed, only hidden via CSS — so YouTube's internal state, including playback position, is preserved.
+
+## Exiting Reader Mode
+
+Reader Mode can be exited in two ways:
+
+- **Click the "Video" button** in the action bar. The button shows a play icon while Reader Mode is active.
+- **Click a timestamp link** in the AI Chat response. The extension listens for clicks on elements with the `ytwMarkdownDivTimestamp` CSS class and emits a `PANEL_CLOSED_BY_USER` event, which triggers deactivation.
+
+On deactivation, `body.yt-reader-mode` is removed from the document body, the panel's inline position styles are cleared, and the AI Chat panel is closed by clicking its close button programmatically. The player becomes visible again at its original dimensions.
+
+<Info>
+Reader Mode state does not persist between page navigations. Each time you navigate to a new video, the extension starts fresh. Auto-activate (if enabled) determines whether Reader Mode opens automatically on the new video.
+</Info>

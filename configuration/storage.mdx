@@ -1,0 +1,93 @@
+---
+title: "Settings storage: chrome.storage.sync in YT Reader Mode"
+description: "YT Reader Mode uses chrome.storage.sync to persist settings across browser restarts and sync them across devices where you are signed in to Chrome."
+---
+
+YT Reader Mode uses `chrome.storage.sync` to persist your settings, which means they survive browser restarts and sync automatically across any Chrome browser where you're signed in with the same Google account.
+
+## Stored values
+
+The extension writes three keys to `chrome.storage.sync`:
+
+| Key | Type | Default value |
+|-----|------|---------------|
+| `autoActivate` | boolean | `true` |
+| `initialPromptEnabled` | boolean | `true` |
+| `initialPromptText` | string | `"Summarize the video"` |
+
+These defaults are defined in the `_defaults` object inside `settingsManager.js` and used as fallback values whenever storage returns nothing:
+
+```javascript
+const SettingsManager = {
+  _defaults: {
+    autoActivate: true,
+    initialPromptEnabled: true,
+    initialPromptText: 'Summarize the video'
+  },
+  // ...
+};
+```
+
+## How settings are loaded
+
+When the extension initializes on a YouTube page, `EventBus` emits `APP_INIT`. `SettingsManager` listens for this event and calls `init()`, which triggers `load()`:
+
+```javascript
+load() {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.sync.get((items) => {
+        let settings = this._defaults;
+        if (!chrome.runtime.lastError && items && typeof items === 'object') {
+          settings = { ...this._defaults, ...items };
+        }
+        StateManager.setSettings(settings);
+        resolve(settings);
+      });
+    } catch (e) {
+      StateManager.setSettings(this._defaults);
+      resolve(this._defaults);
+    }
+  });
+},
+```
+
+`load()` reads all keys from `chrome.storage.sync` and merges the result with `_defaults`. The merge ensures that any key not yet written to storage — for example, on a fresh install — still receives a valid value. The merged settings object is passed to `StateManager.setSettings()`, which stores the values in memory and emits a `SETTINGS_CHANGED` event so that all dependent components receive the initial configuration.
+
+## Real-time updates
+
+`SettingsManager.init()` registers a `chrome.storage.onChanged` listener after calling `load()`:
+
+```javascript
+init() {
+  this.load();
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'sync') {
+      chrome.storage.sync.get((items) => {
+        const settings = { ...this._defaults, ...items };
+        StateManager.setSettings(settings);
+      });
+    }
+  });
+}
+```
+
+The listener fires whenever any key in the `sync` area changes. It re-reads all values from storage, merges them with defaults, and calls `StateManager.setSettings()` again. Because `setSettings()` emits `SETTINGS_CHANGED`, any component listening to that event — such as the auto-activate logic or the initial prompt sender — reacts immediately.
+
+This means that changing a setting in the popup takes effect on the current YouTube tab without requiring a page reload.
+
+## Storage limits
+
+`chrome.storage.sync` enforces the following quota limits:
+
+| Limit | Value |
+|-------|-------|
+| Total storage | 100 KB |
+| Per-item size | 8 KB |
+| Write operations per hour | 1,800 |
+
+YT Reader Mode stores only three small values, well within all quota limits. The only variable-size field is `initialPromptText`. Even a long custom prompt is unlikely to approach the 8 KB per-item ceiling.
+
+<Note>
+If you sign out of Chrome or use the extension without a Google account, settings still persist locally. `chrome.storage.sync` falls back to local storage when sync is unavailable, so your configuration is never lost.
+</Note>

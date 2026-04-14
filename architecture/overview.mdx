@@ -1,0 +1,82 @@
+---
+title: "Architecture overview: modules, events, and layers"
+description: "A zero-dependency, event-driven Vanilla JS architecture loaded via manifest content_scripts — no bundlers, no frameworks, no build step required."
+---
+
+YT Reader Mode is built with plain Vanilla JavaScript and carries zero runtime dependencies. There is no bundler, no transpiler, and no framework. Every file is a self-contained object literal that registers itself on the `EventBus` at load time. The browser loads all files in a fixed order via `content_scripts` in `manifest.json`, giving each module a predictable global scope where earlier files are already available before later ones execute.
+
+## Module loading order
+
+The `content_scripts` array in `manifest.json` defines the exact order in which files are injected into every YouTube page:
+
+```json manifest.json
+"js": [
+  "src/core/eventBus.js",
+  "src/core/youtubeFacade.js",
+  "src/core/stateManager.js",
+  "src/services/settingsManager.js",
+  "src/services/panelManager.js",
+  "src/ui/toggleButton.js",
+  "src/core/navigationWatcher.js",
+  "src/controllers/readerModeController.js",
+  "src/content.js"
+]
+```
+
+Each module, when its file is executed, self-registers its event subscriptions by calling `EventBus.on(...)` at the top level of its file. For example, `readerModeController.js` ends with:
+
+```javascript readerModeController.js
+EventBus.on('APP_INIT', () => ReaderModeController.activate());
+EventBus.on('TOGGLE_REQUESTED', () => ReaderModeController.toggle());
+EventBus.on('PANEL_CLOSED_BY_USER', () => ReaderModeController.deactivate());
+EventBus.on('NAVIGATE_FINISH', () => {
+  ReaderModeController.deactivate();
+  setTimeout(() => {
+    EventBus.emit('APP_INIT');
+  }, 500);
+});
+```
+
+Once all files are loaded, `content.js` fires the single line that starts the entire system:
+
+```javascript content.js
+EventBus.emit('APP_INIT');
+```
+
+Every module that registered on `APP_INIT` then runs its initialization logic in response.
+
+## Core principles
+
+**Event Kernel (EventBus):** The pub/sub pattern eliminates direct dependencies between modules. No module imports or calls another module's methods directly — all coordination happens through named events. This means any module can be replaced or extended without touching the others.
+
+**DOM Fragility Isolation (YouTubeFacade):** YouTube frequently changes its DOM structure and CSS class names. All `document.querySelector` calls are centralized in `YouTubeFacade`, so when YouTube updates its interface, only one file needs to change.
+
+**Unidirectional Flow Reactivity:** State changes originate in `StateManager` and cascade outward via `EventBus` events. Components never mutate shared state directly — they request changes through events and then react to the `STATE_CHANGED` or `SETTINGS_CHANGED` broadcasts that `StateManager` emits in response.
+
+## Layer diagram
+
+The codebase is organized into four layers, each with a distinct responsibility:
+
+| Layer | Modules | Responsibility |
+|---|---|---|
+| Entry point | `content.js` | Fires `APP_INIT` to boot the system |
+| Core | `EventBus`, `YouTubeFacade`, `StateManager`, `NavigationWatcher` | Communication, DOM access, state, navigation |
+| Services | `SettingsManager`, `PanelManager` | Chrome storage, AI Chat panel lifecycle |
+| UI / Controllers | `ToggleButton`, `ReaderModeController` | User interface, orchestration |
+
+Modules in higher layers depend on modules in lower layers via events, never via direct references. `ToggleButton` never calls `PanelManager` directly — it emits `TOGGLE_REQUESTED` and lets `ReaderModeController` handle the rest.
+
+## Event flow
+
+The following events form the complete communication surface of the extension:
+
+| Event | Emitted by | Handled by | Payload |
+|---|---|---|---|
+| `APP_INIT` | `content.js`, `ReaderModeController` (after navigation) | `NavigationWatcher`, `SettingsManager`, `ReaderModeController`, `ToggleButton` | none |
+| `NAVIGATE_FINISH` | `NavigationWatcher` | `ReaderModeController` | none |
+| `STATE_CHANGED` | `StateManager` | `ToggleButton` | `{ isActive: boolean }` |
+| `SETTINGS_CHANGED` | `StateManager` | Any subscriber | full settings object |
+| `TOGGLE_REQUESTED` | `ToggleButton` | `ReaderModeController` | none |
+| `PANEL_CLOSED_BY_USER` | `PanelManager` | `ReaderModeController` | none |
+
+`APP_INIT` is the bootstrap event. It is emitted once by `content.js` on initial page load, and then re-emitted by `ReaderModeController` 500 ms after every YouTube SPA navigation, allowing all modules to reinitialize for the new video.
